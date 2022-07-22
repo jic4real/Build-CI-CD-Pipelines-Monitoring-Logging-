@@ -60,7 +60,7 @@ commands:
           # Add when this will run
           when: on_fail
           command: |
-            SUCCESS=$(curl --insecure  https://kvdb.io/4VJ274WBBHEq9RdkvTFDeu/migration_${CIRCLE_WORKFLOW_ID:0:7})
+            SUCCESS=$(curl --insecure  https://kvdb.io/33GxcCpH7rHocPuWALvF32/migration_${CIRCLE_WORKFLOW_ID:0:7})
             if (($SUCCESS == 1)) 
             then
               cd ~/project/backend
@@ -203,11 +203,12 @@ jobs:
       - run:
           name: Add back-end ip to ansible inventory
           command: |
+            cd .circleci/ansible
+            cat inventory.txt
             aws ec2 describe-instances \
-            --filter "Name=instance-state-name,Values=running" \
-            --query "Reservations[*].Instances[*].[PublicIpAddress]" \
-            --output text >> ~/project/.circleci/ansible/inventory.txt
-            cat ~/project/.circleci/ansible/inventory.txt
+            --query 'Reservations[*].Instances[*].PublicIpAddress' \
+            --output text --filter Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7} >> inventory.txt
+            cat inventory.txt
      
       - persist_to_workspace:
           root: ~/
@@ -233,7 +234,7 @@ jobs:
           at: ~/
 
       - install_ansible
- 
+      - install_awscli
       - run:
           name: Configure server
           command: |
@@ -265,7 +266,7 @@ jobs:
             cd ~/project/backend
             if grep -q "has been executed successfully" migration_output.txt
             then
-              curl --insecure https://kvdb.io/DWWjxsPKNSRSM6jvbL5UmG/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
+              curl --insecure https://kvdb.io/33GxcCpH7rHocPuWALvF32/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
             fi
      # Here's where you will add some code to rollback on failure
       - destroy-environment:
@@ -346,6 +347,7 @@ jobs:
             mkdir files
             cd files
             tar -C ../../../backend -czvf artifact.tar.gz .
+            cd ../
 
             echo "Contents  of the inventory.txt file is -------"
             cat inventory.txt
